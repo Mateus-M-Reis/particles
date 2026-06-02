@@ -33,7 +33,6 @@ Require it in your project using:
 
 ```lua
 local particles = require 'particles'
-
 ```
 
 ---
@@ -65,6 +64,14 @@ function lovr.draw(pass)
   fireSystem:draw(pass)
 end
 
+```
+
+The remaining files in this repository (`main.lua`, `lodr`, and `assets`) comprise a live preview workspace.
+
+To execute the demo with hot-reloading active, run the following command from the root of the repository:
+
+```bash
+lovr lodr ./
 ```
 
 ---
