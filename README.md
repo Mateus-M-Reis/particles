@@ -1,6 +1,6 @@
 # particles
 
-A powerful, high-performance, and feature-packed 3D particle system module for the [LÖVR](https://lovr.org) VR engine. Inspired by the flexibility of Defold's *AcidRain* library, this module is built from the ground up to take advantage of LÖVR's native 3D vectors while remaining strictly safe from vector-allocation pool recycling errors.
+A powerful, high-performance, and feature-packed 3D particle system module for the [LÖVR](https://lovr.org) VR engine. Inspired by the flexibility of Defold's [AcidRain](https://github.com/approboGames/AcidRain/tree/master) library, this module is built from the ground up to take advantage of LÖVR's native 3D vectors while remaining strictly safe from vector-allocation pool recycling errors.
 
 ---
 
@@ -33,6 +33,7 @@ Require it in your project using:
 
 ```lua
 local particles = require 'particles'
+
 ```
 
 ---
@@ -66,12 +67,11 @@ end
 
 ```
 
-The remaining files in this repository (`main.lua`, `lodr`, and `assets`) comprise a live preview workspace.
-
-To execute the demo with hot-reloading active, run the following command from the root of the repository:
+Then you can run it.
 
 ```bash
-lovr lodr ./
+lovr ./
+
 ```
 
 ---

@@ -1,4 +1,5 @@
--- main.lua
+---@diagnostic disable: duplicate-set-field
+
 local particles = require 'init'
 
 local systems = {}
@@ -6,7 +7,7 @@ local systems = {}
 function lovr.load()
   -- 1. FIRE FOUNTAIN: Dynamic Color Gradients + Sphere Emitter Volume + Air Drag
   table.insert(systems, particles.new({
-    position = Vec3(-1.5, 0.5, -3),
+    position = Vec3(-1.5, 0.5, -5),
     shape = "sphere",
     shape_size = 0.4,           -- Radius of the sphere
     shape_edge = false,         -- Emit throughout the whole volume
@@ -24,7 +25,7 @@ function lovr.load()
 
   -- 2. MOVING LOCAL AURA RING: Local Space Tracking + Disc Ring Edge Emitter
   table.insert(systems, particles.new({
-    position = Vec3(1.5, 1, -3),
+    position = Vec3(1.5, 1, -5),
     space = "local",            -- Particles stick to and travel along with the emitter position!
     shape = "disc",
     shape_size = 0.5,           -- Radius of ring
@@ -43,7 +44,7 @@ function lovr.load()
 
   -- 3. EXPLOSIVE BURST SYSTEM: AcidRain Style Bursts + Custom Code Modifiers
   table.insert(systems, particles.new({
-    position = Vec3(0, 1.5, -4),
+    position = Vec3(0, 1.5, -6),
     rate = 0,                   -- Disable constant rate emission...
     bursts = {
       { time = 0, count = 100 },       -- Fire an initial 100 particle explosion wave instantly
@@ -58,9 +59,9 @@ function lovr.load()
     size_start = 0.15,
     size_end = 0.02,
     rotation_speed = {1, 5},
-    
+
     -- Ultimate capability: inject custom equations directly into the engine update loop
-    custom_update = function(p, dt, progress)
+    custom_update = function(p, _, _)
       -- Let's make particles spiral/zigzag outwards using a sine wave modifier over time
       p.position.x = p.position.x + math.sin(p.age * 10) * 0.02
     end

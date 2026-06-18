@@ -1,4 +1,17 @@
---  init.lua
+---@meta -- Diz ao LSP que isso é apenas para definições de tipo, se colocar em arquivo separado
+
+---@class Vec3
+---@field x number A coordenada X do vetor
+---@field y number A coordenada Y do vetor
+---@field z number A coordenada Z do vetor
+
+---@class Vec4
+---@field x number A coordenada X do vetor
+---@field y number A coordenada Y do vetor
+---@field z number A coordenada Z do vetor
+---@field w number A coordenada W do vetor
+
+
 local particles = {}
 
 -- Highly flexible helper to process ranges {min, max}, arrays of choices, or single values
@@ -112,36 +125,36 @@ function particles.new(options)
     -- Base settings
     position = Vec3(0, 0, 0),
     space = "world",            -- "world" or "local"
-    max_particles = 1000,       
+    max_particles = 1000,
 
     -- Emitter properties
-    rate = 10,                  
-    shape = "point",            
-    shape_size = Vec3(0.1, 0.1, 0.1), 
-    shape_edge = false,         
+    rate = 10,
+    shape = "point",
+    shape_size = Vec3(0.1, 0.1, 0.1),
+    shape_edge = false,
 
     -- Kinematics
     lifetime = 5,
     velocity = Vec3(0, 1, 0),
     spread = Vec3(1, 1, 1),
     gravity = Vec3(0, -0.5, 0),
-    drag = 0,                   
+    drag = 0,
 
     -- Appearance progressions over lifetime
     color_start = Vec4(1, 1, 1, 1),
-    color_end = nil,            
+    color_end = nil,
     size_start = Vec3(0.1, 0.1, 0.1),
-    size_end = nil,             
-    fade = true,                
+    size_end = nil,
+    fade = true,
 
     -- Rotation settings
-    rotation_speed = 0,         
+    rotation_speed = 0,
 
     -- Burst profiles
-    bursts = nil,               
+    bursts = nil,
 
     -- Custom Update Modifier Hook
-    custom_update = nil,        
+    custom_update = nil,
 
     -- Internal State
     particles = {},
@@ -169,7 +182,7 @@ function particles.new(options)
     local local_offset = get_shape_offset(self.shape, self.shape_size, self.shape_edge)
     local spawn_pos
     if self.space == "local" then
-      spawn_pos = Vec3(local_offset) 
+      spawn_pos = Vec3(local_offset)
     else
       spawn_pos = Vec3(self.position):add(local_offset)
     end
@@ -187,7 +200,7 @@ function particles.new(options)
     local p = {
       position = spawn_pos,
       velocity = p_velocity,
-      lifetime = p_lifetime * (0.9 + math.random() * 0.2), 
+      lifetime = p_lifetime * (0.9 + math.random() * 0.2),
       age = 0,
 
       color_start = random_vec4(self.color_start, Vec4(1, 1, 1, 1)),
@@ -258,7 +271,7 @@ function particles.new(options)
       if p.age >= p.lifetime then
         table.remove(self.particles, i)
       else
-        local t = p.age / p.lifetime 
+        local t = p.age / p.lifetime
 
         -- Translational Mechanics
         p.velocity:add(current_gravity * dt)
