@@ -1,3 +1,6 @@
+---@diagnostic disable: duplicate-set-field
+---@diagnostic disable: duplicate-doc-field
+
 ---@meta -- Diz ao LSP que isso é apenas para definições de tipo, se colocar em arquivo separado
 
 ---@class Vec3
