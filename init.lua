@@ -11,11 +11,14 @@
 ---@field z number A coordenada Z do vetor
 ---@field w number A coordenada W do vetor
 
+-- Constants
+local LIFETIME_VARIATION = 0.1
+local TWO_PI = math.pi * 2
 
 local particles = {}
 
--- Highly flexible helper to process ranges {min, max}, arrays of choices, or single values
-local function random_range(val, default)
+-- Consolidated random helper for scalar values
+local function random_value(val, default)
   if val == nil then return default end
   if type(val) == 'number' then
     return val
@@ -31,58 +34,41 @@ local function random_range(val, default)
   return val
 end
 
-local function random_vec3(val, default)
-  if val == nil then return default and Vec3(default) or Vec3(0, 0, 0) end
+-- Consolidated random helper for vector types (Vec3 or Vec4)
+local function random_vector(val, default, vec_constructor, dimensions)
+  if val == nil then return default and vec_constructor(default) or vec_constructor(0, 0, 0, dimensions == 4 and 1 or nil) end
   if type(val) == 'userdata' or (type(val) == 'table' and val.x) then
-    return Vec3(val)
+    return vec_constructor(val)
   elseif type(val) == 'table' then
     if val.min and val.max then
-      local minV, maxV = Vec3(val.min), Vec3(val.max)
-      return Vec3(
-        minV.x + math.random() * (maxV.x - minV.x),
-        minV.y + math.random() * (maxV.y - minV.y),
-        minV.z + math.random() * (maxV.z - minV.z)
-      )
+      local minV, maxV = vec_constructor(val.min), vec_constructor(val.max)
+      local components = {'x', 'y', 'z', 'w'}
+      local args = {}
+      for i = 1, dimensions do
+        args[i] = minV[components[i]] + math.random() * (maxV[components[i]] - minV[components[i]])
+      end
+      return vec_constructor(unpack(args))
     elseif #val == 2 then
-      local minV, maxV = Vec3(val[1]), Vec3(val[2])
-      return Vec3(
-        minV.x + math.random() * (maxV.x - minV.x),
-        minV.y + math.random() * (maxV.y - minV.y),
-        minV.z + math.random() * (maxV.z - minV.z)
-      )
+      local minV, maxV = vec_constructor(val[1]), vec_constructor(val[2])
+      local components = {'x', 'y', 'z', 'w'}
+      local args = {}
+      for i = 1, dimensions do
+        args[i] = minV[components[i]] + math.random() * (maxV[components[i]] - minV[components[i]])
+      end
+      return vec_constructor(unpack(args))
     elseif #val > 0 then
-      return Vec3(val[math.random(#val)])
+      return vec_constructor(val[math.random(#val)])
     end
   end
-  return Vec3(val)
+  return vec_constructor(val)
+end
+
+local function random_vec3(val, default)
+  return random_vector(val, default, Vec3, 3)
 end
 
 local function random_vec4(val, default)
-  if val == nil then return default and Vec4(default) or Vec4(1, 1, 1, 1) end
-  if type(val) == 'userdata' or (type(val) == 'table' and val.r) then
-    return Vec4(val)
-  elseif type(val) == 'table' then
-    if val.min and val.max then
-      local minV, maxV = Vec4(val.min), Vec4(val.max)
-      return Vec4(
-        minV.x + math.random() * (maxV.x - minV.x),
-        minV.y + math.random() * (maxV.y - minV.y),
-        minV.z + math.random() * (maxV.z - minV.z),
-        minV.w + math.random() * (maxV.w - minV.w)
-      )
-    elseif #val == 2 then
-      local minV, maxV = Vec4(val[1]), Vec4(val[2])
-      return Vec4(
-        minV.x + math.random() * (maxV.x - minV.x),
-        minV.y + math.random() * (maxV.y - minV.y),
-        minV.z + math.random() * (maxV.z - minV.z),
-        minV.w + math.random() * (maxV.w - minV.w)
-      )
-    elseif #val > 0 then
-      return Vec4(val[math.random(#val)])
-    end
-  end
-  return Vec4(val)
+  return random_vector(val, default, Vec4, 4)
 end
 
 -- Generates 3D spatial emission offset based on configured shape
@@ -100,8 +86,8 @@ local function get_shape_offset(shape, shape_size, edge_only)
     end
     pos:set(rx * size.x * 0.5, ry * size.y * 0.5, rz * size.z * 0.5)
   elseif shape == 'sphere' then
-    local radius = random_range(shape_size, 1)
-    local theta = math.random() * math.pi * 2
+    local radius = random_value(shape_size, 1)
+    local theta = math.random() * TWO_PI
     local phi = math.acos(math.random() * 2 - 1)
     local r = edge_only and 1 or (math.random() ^ (1 / 3))
     r = r * radius
@@ -111,8 +97,8 @@ local function get_shape_offset(shape, shape_size, edge_only)
       r * math.cos(phi)
     )
   elseif shape == 'disc' then
-    local radius = random_range(shape_size, 1)
-    local theta = math.random() * math.pi * 2
+    local radius = random_value(shape_size, 1)
+    local theta = math.random() * TWO_PI
     local r = edge_only and radius or (math.sqrt(math.random()) * radius)
     pos:set(r * math.cos(theta), 0, r * math.sin(theta))
   end
@@ -158,6 +144,7 @@ function particles.new(options)
 
     -- Internal State
     particles = {},
+    particle_pool = {},
     timer = 0,
     elapsed_time = 0,
     active = true
@@ -187,7 +174,7 @@ function particles.new(options)
       spawn_pos = Vec3(self.position):add(local_offset)
     end
 
-    local p_lifetime = random_range(self.lifetime, 5)
+    local p_lifetime = random_value(self.lifetime, 5)
     local base_vel = random_vec3(self.velocity, Vec3(0, 1, 0))
     local spread_amt = random_vec3(self.spread, Vec3(0, 0, 0))
 
@@ -197,29 +184,34 @@ function particles.new(options)
       base_vel.z + (math.random() * 2 - 1) * spread_amt.z
     )
 
-    local p = {
-      position = spawn_pos,
-      velocity = p_velocity,
-      lifetime = p_lifetime * (0.9 + math.random() * 0.2),
-      age = 0,
+    -- Get particle from pool or create new one
+    local p = table.remove(self.particle_pool) or {}
 
-      color_start = random_vec4(self.color_start, Vec4(1, 1, 1, 1)),
-      color_end = self.color_end and random_vec4(self.color_end) or nil,
-      color = random_vec4(self.color_start, Vec4(1, 1, 1, 1)),
+    p.position = spawn_pos
+    p.velocity = p_velocity
+    p.lifetime = p_lifetime * (1 - LIFETIME_VARIATION + math.random() * LIFETIME_VARIATION * 2)
+    p.age = 0
 
-      size_start = random_vec3(self.size_start, Vec3(0.1, 0.1, 0.1)),
-      size_end = self.size_end and random_vec3(self.size_end) or nil,
-      size = random_vec3(self.size_start, Vec3(0.1, 0.1, 0.1)),
+    p.color_start = random_vec4(self.color_start, Vec4(1, 1, 1, 1))
+    p.color_end = self.color_end and random_vec4(self.color_end) or nil
+    p.color = random_vec4(self.color_start, Vec4(1, 1, 1, 1))
 
-      rotation = 0,
-      rotation_axis = Vec3(math.random(), math.random(), math.random()):normalize(),
-      rotation_speed = random_range(self.rotation_speed, 0)
-    }
+    p.size_start = random_vec3(self.size_start, Vec3(0.1, 0.1, 0.1))
+    p.size_end = self.size_end and random_vec3(self.size_end) or nil
+    p.size = random_vec3(self.size_start, Vec3(0.1, 0.1, 0.1))
+
+    p.rotation = 0
+    p.rotation_axis = Vec3(math.random(), math.random(), math.random()):normalize()
+    p.rotation_speed = random_value(self.rotation_speed, 0)
 
     table.insert(self.particles, p)
   end
 
   function system:reset()
+    -- Return particles to pool
+    for _, p in ipairs(self.particles) do
+      table.insert(self.particle_pool, p)
+    end
     self.particles = {}
     self.timer = 0
     self.elapsed_time = 0
@@ -235,7 +227,7 @@ function particles.new(options)
     self.elapsed_time = self.elapsed_time + dt
 
     if self.active then
-      local current_rate = random_range(self.rate, 10)
+      local current_rate = random_value(self.rate, 10)
       if current_rate > 0 then
         self.timer = self.timer + dt
         local emitInterval = 1 / current_rate
@@ -264,12 +256,18 @@ function particles.new(options)
     end
 
     local current_gravity = random_vec3(self.gravity, Vec3(0, -0.5, 0))
-    for i = #self.particles, 1, -1 do
+    local i = 1
+    while i <= #self.particles do
       local p = self.particles[i]
       p.age = p.age + dt
 
       if p.age >= p.lifetime then
-        table.remove(self.particles, i)
+        -- Swap with last particle and pop (O(1) instead of O(n))
+        self.particles[i] = self.particles[#self.particles]
+        table.remove(self.particles)
+        -- Return particle to pool
+        table.insert(self.particle_pool, p)
+        -- Don't increment i since we swapped
       else
         local t = p.age / p.lifetime
 
@@ -309,6 +307,7 @@ function particles.new(options)
         if self.custom_update then
           self.custom_update(p, dt, t)
         end
+        i = i + 1
       end
     end
   end
@@ -335,6 +334,27 @@ function particles.new(options)
 
   function system:toggle()
     self.active = not self.active
+  end
+
+  function system:getParticleCount()
+    return #self.particles
+  end
+
+  function system:isActive()
+    return self.active
+  end
+
+  function system:setActive(active)
+    self.active = active
+  end
+
+  function system:getElapsedTime()
+    return self.elapsed_time
+  end
+
+  function system:destroy()
+    self:reset()
+    self.particle_pool = nil
   end
 
   return system

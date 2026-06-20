@@ -163,3 +163,23 @@ Toggles whether the system is active or paused. Paused systems stop emitting but
 #### `system:reset()`
 
 Flushes all active particles out of the lookup array and rewinds system-wide elapsed timers back to zero. Useful for re-triggering one-shot explosion schedules.
+
+#### `system:getParticleCount()`
+
+Returns the current number of active particles in the system.
+
+#### `system:isActive()`
+
+Returns `true` if the system is currently active (emitting particles), `false` if paused.
+
+#### `system:setActive(active)`
+
+Sets the active state of the system. Pass `true` to enable emission, `false` to pause.
+
+#### `system:getElapsedTime()`
+
+Returns the total elapsed time since the system was created or last reset, in seconds.
+
+#### `system:destroy()`
+
+Cleans up the system by resetting all particles and clearing the particle pool. Call this when you're done with a system to free memory.
