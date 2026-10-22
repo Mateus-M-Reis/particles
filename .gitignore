@@ -1,8 +1,6 @@
 # Local editor config
 .luarc.json
 
-# Ignore everything under dev/ except the vendored dev dependencies
-/dev/*
-!/dev/api/
-!/dev/lodr/
-!/dev/lovr-phywire/
+# Local development assets (LÖVR API docs/examples, lodr, lovr-phywire).
+# Not needed at runtime; keep them on disk but out of the repository.
+dev/
