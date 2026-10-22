@@ -1,4 +1,8 @@
-
+# Local editor config
 .luarc.json
 
-dev/
+# Ignore everything under dev/ except the vendored dev dependencies
+/dev/*
+!/dev/api/
+!/dev/lodr/
+!/dev/lovr-phywire/
