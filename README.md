@@ -2,7 +2,7 @@
 
 A powerful, high-performance, and feature-packed 3D particle system module for the [LÖVR](https://lovr.org) VR engine. Inspired by the flexibility of Defold's [AcidRain](https://github.com/approboGames/AcidRain/tree/master) library, this module is built from the ground up to take advantage of LÖVR's native 3D vectors while remaining strictly safe from vector-allocation pool recycling errors.
 
-**Version 0.2.1.** Runs on LÖVR 0.18 and 0.19. Upgrading an existing project? Read [MIGRATION.md](MIGRATION.md) for the behavior changes and compatibility recipes; release notes are in [CHANGELOG.md](CHANGELOG.md).
+**Version 0.2.2.** Runs on LÖVR 0.18 and 0.19. Upgrading an existing project? Read [MIGRATION.md](MIGRATION.md) for the behavior changes and compatibility recipes; release notes are in [CHANGELOG.md](CHANGELOG.md).
 
 ---
 
@@ -71,8 +71,8 @@ function lovr.load()
     rate = 30,
     velocity = Vec3(0, 1, 0),
     spread = Vec3(0.2, 0, 0.2),
-    color_start = Vec4(1, 0.5, 0, 1),
-    color_end = Vec4(0.2, 0, 0, 0),
+    color_start = particles.vec4(1, 0.5, 0, 1),
+    color_end = particles.vec4(0.2, 0, 0, 0),
     size_start = 0.1,
     size_end = 0.01
   })
@@ -94,6 +94,11 @@ Then you can run it.
 lovr ./
 
 ```
+
+> **LÖVR 0.19:** the legacy global `Vec4` is aliased to the 3D vector type, so
+> `Vec4(r, g, b, a)` drops `w`. Use `particles.vec4(r, g, b, a)` for RGBA
+> colors; the library also accepts a `{x = ..., y = ..., z = ..., w = ...}`
+> table.
 
 ---
 

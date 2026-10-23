@@ -2,6 +2,23 @@
 
 All notable changes to this project are documented here.
 
+## [0.2.2] - 2026-10-23
+
+### Added
+
+* `particles.vec4(r, g, b, a)` creates a 4-component color on both LÖVR 0.18
+  and 0.19, where the legacy global `Vec4` is aliased to the 3D vector type and
+  silently drops the alpha component.
+
+### Fixed
+
+* Color alpha, GPU row data, and gradient `w` values are preserved on LÖVR
+  0.19. The global `Vec4` there is a 3D vector, so internal color/row vectors
+  now add `w` explicitly after construction.
+* The GPU emitter row fields (`position`, `velocity`, `sizeStart`, `sizeEnd`,
+  `axis`) keep their fourth component instead of losing lifetime, speed, and
+  flags to the same alias.
+
 ## [0.2.1] - 2026-10-23
 
 ### Changed

@@ -28,12 +28,35 @@ local function is_vector(v)
   return type(v) == 'userdata' or (type(v) == 'table' and v.x ~= nil)
 end
 
+-- LÖVR 0.19's legacy global `Vec4` is the same 3D table vector as `Vec3`
+-- (the fourth component is dropped), so a color/row vector needs its `w`
+-- assigned explicitly. On 0.18 `Vec4` is already 4D; assigning `w` is a
+-- harmless no-op there.
+local function new_vec4(x, y, z, w)
+  local v = Vec4(x, y, z, w)
+  v.w = w or 1
+  return v
+end
+
+---Create a 4-component color/vector. Use this instead of the legacy global
+-- `Vec4` on LÖVR 0.19, where `Vec4` is aliased to the 3D vector and drops `w`.
+function particles.vec4(x, y, z, w)
+  return new_vec4(x, y, z, w)
+end
+
+local function make_vector(vec_constructor, dimensions, ...)
+  if dimensions == 4 then
+    return new_vec4(...)
+  end
+  return vec_constructor(...)
+end
+
 -- 0.19's Vec3(existing) returns the same table (copy constructors were
 -- deprecated), so copies must be explicit. This also avoids mutating option
 -- tables supplied by callers.
 local function copy_vector(v, vec_constructor, dimensions)
   if dimensions == 4 then
-    return vec_constructor(v.x, v.y, v.z, v.w or 1)
+    return new_vec4(v.x, v.y, v.z, v.w or 1)
   end
   return vec_constructor(v.x, v.y, v.z)
 end
@@ -41,6 +64,9 @@ end
 local function as_vector(v, vec_constructor, dimensions)
   if is_vector(v) then
     return copy_vector(v, vec_constructor, dimensions)
+  end
+  if dimensions == 4 then
+    return new_vec4(v, v, v, 1)
   end
   return vec_constructor(v)
 end
@@ -66,7 +92,7 @@ end
 local function random_vector(val, default, vec_constructor, dimensions)
   if val == nil then
     if default then return copy_vector(default, vec_constructor, dimensions) end
-    return vec_constructor(0, 0, 0, dimensions == 4 and 1 or nil)
+    return make_vector(vec_constructor, dimensions, 0, 0, 0, dimensions == 4 and 1 or nil)
   end
   if is_vector(val) then
     return copy_vector(val, vec_constructor, dimensions)
@@ -79,21 +105,22 @@ local function random_vector(val, default, vec_constructor, dimensions)
       for i = 1, dimensions do
         args[i] = minV[components[i]] + math.random() * (maxV[components[i]] - minV[components[i]])
       end
-      return vec_constructor(unpack(args))
+      return make_vector(vec_constructor, dimensions, unpack(args))
     elseif #val == 2 and type(val[1]) == 'number' and type(val[2]) == 'number' then
       -- Two numbers are the {min, max} shorthand; arrays of vectors are choices.
-      local minV, maxV = vec_constructor(val[1]), vec_constructor(val[2])
+      local minV = make_vector(vec_constructor, dimensions, val[1])
+      local maxV = make_vector(vec_constructor, dimensions, val[2])
       local components = {'x', 'y', 'z', 'w'}
       local args = {}
       for i = 1, dimensions do
         args[i] = minV[components[i]] + math.random() * (maxV[components[i]] - minV[components[i]])
       end
-      return vec_constructor(unpack(args))
+      return make_vector(vec_constructor, dimensions, unpack(args))
     elseif #val > 0 then
       return as_vector(val[math.random(#val)], vec_constructor, dimensions)
     end
   end
-  return vec_constructor(val)
+  return as_vector(val, vec_constructor, dimensions)
 end
 
 local function random_vec3(val, default)
@@ -376,7 +403,7 @@ function particles.new(options)
     drag = 0,
 
     -- Appearance progressions over lifetime
-    color_start = Vec4(1, 1, 1, 1),
+    color_start = new_vec4(1, 1, 1, 1),
     color_end = nil,
     size_start = Vec3(0.1, 0.1, 0.1),
     size_end = nil,
@@ -494,7 +521,7 @@ function particles.new(options)
     p.lifetime = p_lifetime * (1 - LIFETIME_VARIATION + math.random() * LIFETIME_VARIATION * 2)
     p.age = 0
 
-    p.color_start = random_vec4(self.color_start, Vec4(1, 1, 1, 1))
+    p.color_start = random_vec4(self.color_start, new_vec4(1, 1, 1, 1))
     p.color_end = self.color_end and random_vec4(self.color_end) or nil
     -- Start from the same sample as color_start so the gradient starts at t = 0.
     p.color = copy_vector(p.color_start, Vec4, 4)
@@ -685,7 +712,7 @@ function particles.new(options)
     local vy = base.y + (math.random() * 2 - 1) * spread.y
     local vz = base.z + (math.random() * 2 - 1) * spread.z
 
-    local color_start = random_vec4(self.color_start, Vec4(1, 1, 1, 1))
+    local color_start = random_vec4(self.color_start, new_vec4(1, 1, 1, 1))
     local color_end = self.color_end and random_vec4(self.color_end) or color_start
     local size_start = random_vec3(self.size_start, Vec3(0.1, 0.1, 0.1))
     local size_end = self.size_end and random_vec3(self.size_end) or size_start
@@ -701,13 +728,13 @@ function particles.new(options)
     if self.fade then flags = flags + 4 end
 
     local row = self._emit_row
-    row.position = Vec4(x, y, z, self.elapsed_time)
-    row.velocity = Vec4(vx, vy, vz, lifetime)
+    row.position = new_vec4(x, y, z, self.elapsed_time)
+    row.velocity = new_vec4(vx, vy, vz, lifetime)
     row.colorStart = color_start
     row.colorEnd = color_end
-    row.sizeStart = Vec4(sx, sy, sz, speed)
-    row.sizeEnd = Vec4(ex, ey, ez, 0)
-    row.axis = Vec4(ax, ay, az, flags)
+    row.sizeStart = new_vec4(sx, sy, sz, speed)
+    row.sizeEnd = new_vec4(ex, ey, ez, 0)
+    row.axis = new_vec4(ax, ay, az, flags)
 
     self._particle_buffer:setData(self._emit_list, slot)
     self._death_times[slot] = self.elapsed_time + lifetime
