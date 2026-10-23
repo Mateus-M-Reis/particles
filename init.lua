@@ -22,6 +22,29 @@ local INSTANCE_CAPACITY_HINT = 8192
 
 local particles = {}
 
+-- LÖVR 0.18 stored vectors as userdata; 0.19 uses tables. Both expose the
+-- components through x/y/z(/w), so component access is the portable test.
+local function is_vector(v)
+  return type(v) == 'userdata' or (type(v) == 'table' and v.x ~= nil)
+end
+
+-- 0.19's Vec3(existing) returns the same table (copy constructors were
+-- deprecated), so copies must be explicit. This also avoids mutating option
+-- tables supplied by callers.
+local function copy_vector(v, vec_constructor, dimensions)
+  if dimensions == 4 then
+    return vec_constructor(v.x, v.y, v.z, v.w or 1)
+  end
+  return vec_constructor(v.x, v.y, v.z)
+end
+
+local function as_vector(v, vec_constructor, dimensions)
+  if is_vector(v) then
+    return copy_vector(v, vec_constructor, dimensions)
+  end
+  return vec_constructor(v)
+end
+
 -- Consolidated random helper for scalar values
 local function random_value(val, default)
   if val == nil then return default end
@@ -41,12 +64,16 @@ end
 
 -- Consolidated random helper for vector types (Vec3 or Vec4)
 local function random_vector(val, default, vec_constructor, dimensions)
-  if val == nil then return default and vec_constructor(default) or vec_constructor(0, 0, 0, dimensions == 4 and 1 or nil) end
-  if type(val) == 'userdata' or (type(val) == 'table' and val.x) then
-    return vec_constructor(val)
+  if val == nil then
+    if default then return copy_vector(default, vec_constructor, dimensions) end
+    return vec_constructor(0, 0, 0, dimensions == 4 and 1 or nil)
+  end
+  if is_vector(val) then
+    return copy_vector(val, vec_constructor, dimensions)
   elseif type(val) == 'table' then
     if val.min and val.max then
-      local minV, maxV = vec_constructor(val.min), vec_constructor(val.max)
+      local minV = as_vector(val.min, vec_constructor, dimensions)
+      local maxV = as_vector(val.max, vec_constructor, dimensions)
       local components = {'x', 'y', 'z', 'w'}
       local args = {}
       for i = 1, dimensions do
@@ -63,7 +90,7 @@ local function random_vector(val, default, vec_constructor, dimensions)
       end
       return vec_constructor(unpack(args))
     elseif #val > 0 then
-      return vec_constructor(val[math.random(#val)])
+      return as_vector(val[math.random(#val)], vec_constructor, dimensions)
     end
   end
   return vec_constructor(val)
@@ -90,23 +117,21 @@ local function get_shape_offset(shape, shape_size, edge_only)
       local sign = math.random() > 0.5 and 1 or -1
       if axis == 1 then rx = sign elseif axis == 2 then ry = sign else rz = sign end
     end
-    pos:set(rx * size.x * 0.5, ry * size.y * 0.5, rz * size.z * 0.5)
+    pos.x, pos.y, pos.z = rx * size.x * 0.5, ry * size.y * 0.5, rz * size.z * 0.5
   elseif shape == 'sphere' then
     local radius = random_value(shape_size, 1)
     local theta = math.random() * TWO_PI
     local phi = math.acos(math.random() * 2 - 1)
     local r = edge_only and 1 or (math.random() ^ (1 / 3))
     r = r * radius
-    pos:set(
-      r * math.sin(phi) * math.cos(theta),
-      r * math.sin(phi) * math.sin(theta),
-      r * math.cos(phi)
-    )
+    pos.x = r * math.sin(phi) * math.cos(theta)
+    pos.y = r * math.sin(phi) * math.sin(theta)
+    pos.z = r * math.cos(phi)
   elseif shape == 'disc' then
     local radius = random_value(shape_size, 1)
     local theta = math.random() * TWO_PI
     local r = edge_only and radius or (math.sqrt(math.random()) * radius)
-    pos:set(r * math.cos(theta), 0, r * math.sin(theta))
+    pos.x, pos.y, pos.z = r * math.cos(theta), 0, r * math.sin(theta)
   end
 
   return pos
@@ -324,7 +349,7 @@ local function init_gpu_system(system)
   system._render_shader = render_shader
   system._cube = cube
   system._compute_shader = simulate_shader
-  if type(system.gravity) ~= 'userdata' then
+  if not is_vector(system.gravity) then
     system._gpu_gravity = random_vec3(system.gravity, Vec3(0, -0.5, 0))
   end
   return true
@@ -394,7 +419,11 @@ function particles.new(options)
     system[k] = v
   end
 
-  system.position = Vec3(system.position)
+  if is_vector(system.position) then
+    system.position = copy_vector(system.position, Vec3, 3)
+  else
+    system.position = Vec3(system.position)
+  end
 
   -- Pick the simulation backend. GPU simulation keeps particle state in buffers and integrates
   -- analytically on the GPU; it requires the instanced renderer and is incompatible with
@@ -438,9 +467,13 @@ function particles.new(options)
     local local_offset = get_shape_offset(self.shape, self.shape_size, self.shape_edge)
     local spawn_pos
     if self.space == "local" then
-      spawn_pos = Vec3(local_offset)
+      spawn_pos = Vec3(local_offset.x, local_offset.y, local_offset.z)
     else
-      spawn_pos = Vec3(self.position):add(local_offset)
+      spawn_pos = Vec3(
+        self.position.x + local_offset.x,
+        self.position.y + local_offset.y,
+        self.position.z + local_offset.z
+      )
     end
 
     local p_lifetime = random_value(self.lifetime, 5)
@@ -464,11 +497,11 @@ function particles.new(options)
     p.color_start = random_vec4(self.color_start, Vec4(1, 1, 1, 1))
     p.color_end = self.color_end and random_vec4(self.color_end) or nil
     -- Start from the same sample as color_start so the gradient starts at t = 0.
-    p.color = Vec4(p.color_start)
+    p.color = copy_vector(p.color_start, Vec4, 4)
 
     p.size_start = random_vec3(self.size_start, Vec3(0.1, 0.1, 0.1))
     p.size_end = self.size_end and random_vec3(self.size_end) or nil
-    p.size = Vec3(p.size_start)
+    p.size = copy_vector(p.size_start, Vec3, 3)
 
     p.rotation = 0
     p.rotation_speed = random_value(self.rotation_speed, 0)
@@ -563,10 +596,14 @@ function particles.new(options)
 
     -- Use the gravity vector as-is (so runtime mutation works); only sample range/choice specs.
     local current_gravity = self.gravity
-    if type(current_gravity) ~= 'userdata' then
+    if not is_vector(current_gravity) then
       current_gravity = random_vec3(current_gravity, Vec3(0, -0.5, 0))
     end
-    local gravity_dt = current_gravity * dt
+    local gx, gy, gz = current_gravity.x * dt, current_gravity.y * dt, current_gravity.z * dt
+    local drag = nil
+    if self.drag and self.drag > 0 then
+      drag = 1 - self.drag * dt
+    end
     local i = 1
     while i <= #self.particles do
       local p = self.particles[i]
@@ -583,11 +620,17 @@ function particles.new(options)
         local t = p.age / p.lifetime
 
         -- Translational Mechanics
-        p.velocity:add(gravity_dt)
-        if self.drag and self.drag > 0 then
-          p.velocity:mul(1 - self.drag * dt)
+        p.velocity.x = p.velocity.x + gx
+        p.velocity.y = p.velocity.y + gy
+        p.velocity.z = p.velocity.z + gz
+        if drag then
+          p.velocity.x = p.velocity.x * drag
+          p.velocity.y = p.velocity.y * drag
+          p.velocity.z = p.velocity.z * drag
         end
-        p.position:add(p.velocity * dt)
+        p.position.x = p.position.x + p.velocity.x * dt
+        p.position.y = p.position.y + p.velocity.y * dt
+        p.position.z = p.position.z + p.velocity.z * dt
 
         -- Angular Mechanics
         if p.rotation_speed ~= 0 then
@@ -596,14 +639,19 @@ function particles.new(options)
 
         -- Color Transition Gradient
         if p.color_end then
-          p.color:set(p.color_start):lerp(p.color_end, t)
+          p.color.x = p.color_start.x + (p.color_end.x - p.color_start.x) * t
+          p.color.y = p.color_start.y + (p.color_end.y - p.color_start.y) * t
+          p.color.z = p.color_start.z + (p.color_end.z - p.color_start.z) * t
+          p.color.w = p.color_start.w + (p.color_end.w - p.color_start.w) * t
         elseif self.fade then
           p.color.w = p.color_start.w * (1 - t)
         end
 
         -- Scale size progression
         if p.size_end then
-          p.size:set(p.size_start):lerp(p.size_end, t)
+          p.size.x = p.size_start.x + (p.size_end.x - p.size_start.x) * t
+          p.size.y = p.size_start.y + (p.size_end.y - p.size_start.y) * t
+          p.size.z = p.size_start.z + (p.size_end.z - p.size_start.z) * t
         end
 
         if self.custom_update then
@@ -701,15 +749,15 @@ function particles.new(options)
     if count == 0 then return end
 
     local gravity = self.gravity
-    if type(gravity) ~= 'userdata' then
+    if not is_vector(gravity) then
       gravity = self._gpu_gravity or Vec3(0, -0.5, 0)
     end
 
     local emitter = self._emitter_offset
     if self.space == "local" then
-      emitter:set(self.position)
+      emitter.x, emitter.y, emitter.z = self.position.x, self.position.y, self.position.z
     else
-      emitter:set(0, 0, 0)
+      emitter.x, emitter.y, emitter.z = 0, 0, 0
     end
 
     pass:setShader(self._compute_shader)

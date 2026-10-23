@@ -2,6 +2,28 @@
 
 All notable changes to this project are documented here.
 
+## [0.2.1] - 2026-10-23
+
+### Changed
+
+* LÖVR 0.19 compatibility. The library no longer calls `Vec3:set`, `Vec3:add`,
+  `Vec3:mul`, or the other removed vector methods. Motion, gradients, and the
+  GPU emitter offset are applied through explicit component writes instead.
+* Vector copies are explicit. LÖVR 0.19 changed `Vec3(existing)` /
+  `Vec4(existing)` to return the input table (the deprecated copy behavior was
+  removed), so `system.position`, particle colors/sizes, and range/choice
+  samples are now copied by component. This keeps emitters from aliasing each
+  other and stops gradients from mutating `p.color_start` / `p.size_start`.
+* `is_vector` recognizes the table-based vectors used by 0.19 as well as the
+  userdata vectors used by 0.18, so per-frame `gravity` mutation and GPU
+  gravity sampling work on both.
+
+### Fixed
+
+* Color and size gradients now actually interpolate on LÖVR 0.19. Its
+  `Vec3:lerp` / `Vec4:lerp` returns a new vector instead of mutating the
+  receiver, so the previous `:set(...):lerp(...)` chain discarded the result.
+
 ## [0.2.0] - 2026-10-22
 
 ### Added

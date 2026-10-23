@@ -2,7 +2,7 @@
 
 A powerful, high-performance, and feature-packed 3D particle system module for the [LÖVR](https://lovr.org) VR engine. Inspired by the flexibility of Defold's [AcidRain](https://github.com/approboGames/AcidRain/tree/master) library, this module is built from the ground up to take advantage of LÖVR's native 3D vectors while remaining strictly safe from vector-allocation pool recycling errors.
 
-**Version 0.2.0.** Upgrading an existing project? Read [MIGRATION.md](MIGRATION.md) for the behavior changes and compatibility recipes; release notes are in [CHANGELOG.md](CHANGELOG.md).
+**Version 0.2.1.** Runs on LÖVR 0.18 and 0.19. Upgrading an existing project? Read [MIGRATION.md](MIGRATION.md) for the behavior changes and compatibility recipes; release notes are in [CHANGELOG.md](CHANGELOG.md).
 
 ---
 

@@ -1,5 +1,8 @@
 # Migrating from 0.1 to 0.2
 
+> 0.2.1 is a compatibility patch for LÖVR 0.19: the public API is unchanged,
+> and the same code runs on 0.18 and 0.19. See [CHANGELOG.md](CHANGELOG.md).
+
 Version 0.2 keeps the same constructor/update/draw API, but it changes two defaults and a handful of
 option semantics. Most projects only need to make sure their simulation/rendering backend matches
 what their code expects; the rest are small, documented behavior fixes.
